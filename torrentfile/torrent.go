@@ -1,8 +1,12 @@
 package torrentfile
 
 import (
+	"crypto/rand"
+	"fmt"
 	"main/bencode"
+	"net/url"
 	"os"
+	"strconv"
 )
 
 // TorrentFile struct is != from the torrent struct
@@ -14,6 +18,7 @@ type TorrentFile struct {
 	PieceLength  int
 	Length       int
 	Name         string
+	PeerId       [20]byte
 }
 
 const port uint16 = 6881
@@ -40,6 +45,10 @@ func bencodeToTorrentFile(torrentBencode *bencode.Bencode) (*TorrentFile, error)
 	if err != nil {
 		return nil, err
 	}
+	peerId, err := generatePeerId()
+	if err != nil {
+		return nil, fmt.Errorf("impossible to generate peer id: ERROR %s", err.Error())
+	}
 	return &TorrentFile{
 		Announce:     torrentBencode.Announce,
 		AnnounceList: torrentBencode.AnnounceList,
@@ -48,9 +57,40 @@ func bencodeToTorrentFile(torrentBencode *bencode.Bencode) (*TorrentFile, error)
 		PieceLength:  int(torrentBencode.Info.PieceLength),
 		Length:       int(torrentBencode.Info.Length),
 		Name:         torrentBencode.Info.Name,
+		PeerId:       peerId,
 	}, nil
 }
 
-func (t *TorrentFile) Download(outputPath string) {
+func (t *TorrentFile) Download(outputPath string) error {
 
+	return nil
+}
+
+func (t *TorrentFile) ParseTrackerUrl(trackerAnnounce string) (string, error) {
+	// not using directly t.announce because i can then use this func for using other tracker from the announce list
+	parsedUrl, err := url.Parse(trackerAnnounce)
+	if err != nil {
+		return "", err
+	}
+	// generating a peer id
+	rawQuery := url.Values{
+		"info_hash":  []string{string(t.InfoHash[:])},
+		"downloaded": []string{"0"},
+		"left":       []string{strconv.Itoa(t.Length)},
+		"peer_id":    []string{string(t.PeerId[:])},
+		"port":       []string{strconv.Itoa(int(port))},
+		"uploaded":   []string{"0"},
+		"compact":    []string{"1"},
+	}
+	parsedUrl.RawQuery = rawQuery.Encode()
+	return parsedUrl.String(), nil
+}
+
+func generatePeerId() ([20]byte, error) {
+	var buff [20]byte
+	_, err := rand.Read(buff[:])
+	if err != nil {
+		return [20]byte{}, err
+	}
+	return buff, nil
 }
