@@ -36,6 +36,15 @@ func OpenTorrent(path string) (*TorrentFile, error) {
 	return torrent, nil
 }
 
+func generatePeerId() ([20]byte, error) {
+	var buff [20]byte
+	_, err := rand.Read(buff[:])
+	if err != nil {
+		return [20]byte{}, err
+	}
+	return buff, nil
+}
+
 func bencodeToTorrentFile(torrentBencode *bencode.Bencode) (*TorrentFile, error) {
 	pieceHashes, err := torrentBencode.SplitPieceHashes()
 	if err != nil {
@@ -62,11 +71,18 @@ func bencodeToTorrentFile(torrentBencode *bencode.Bencode) (*TorrentFile, error)
 }
 
 func (t *TorrentFile) Download(outputPath string) error {
-
+	trackerUrl, err := t.BuildTrackerUrl(t.Announce)
+	peers, err := GetPeersFromTracker(trackerUrl)
+	if err != nil {
+		return err
+	}
+	for _, peer := range peers {
+		fmt.Println(peer)
+	}
 	return nil
 }
 
-func (t *TorrentFile) ParseTrackerUrl(trackerAnnounce string) (string, error) {
+func (t *TorrentFile) BuildTrackerUrl(trackerAnnounce string) (string, error) {
 	// not using directly t.announce because i can then use this func for using other tracker from the announce list
 	parsedUrl, err := url.Parse(trackerAnnounce)
 	if err != nil {
@@ -84,13 +100,4 @@ func (t *TorrentFile) ParseTrackerUrl(trackerAnnounce string) (string, error) {
 	}
 	parsedUrl.RawQuery = rawQuery.Encode()
 	return parsedUrl.String(), nil
-}
-
-func generatePeerId() ([20]byte, error) {
-	var buff [20]byte
-	_, err := rand.Read(buff[:])
-	if err != nil {
-		return [20]byte{}, err
-	}
-	return buff, nil
 }

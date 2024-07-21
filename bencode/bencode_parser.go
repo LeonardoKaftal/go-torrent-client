@@ -7,11 +7,6 @@ import (
 	"strconv"
 )
 
-type BencodeTrackerResp struct {
-	Interval int    `bencode:"interval"`
-	Peers    string `bencode:"peers"`
-}
-
 type Bencode struct {
 	Announce     string       `bencode:"announce"`
 	AnnounceList [][]string   `bencode:"announce-list,omitempty"`
@@ -33,6 +28,11 @@ type BencodeInfo struct {
 type File struct {
 	Length int64    `bencode:"length"`
 	Path   []string `bencode:"path"`
+}
+
+type TrackerResp struct {
+	Interval int    `bencode:"interval"`
+	Peers    string `bencode:"peers"`
 }
 
 func (b *Bencode) GetInfoHash() ([20]byte, error) {
@@ -104,16 +104,16 @@ func UnmarshallBencode(torrentData []byte) *Bencode {
 	return &bencode
 }
 
-func UnmarshallTrackerBencodeResponse(responseData []byte) (*BencodeTrackerResp, error) {
+func UnmarshallTrackerBencodeResponse(responseData []byte) (TrackerResp, error) {
 	rawBencode, _ := parseBencodeValue(responseData, 0)
 	bencodeMap := rawBencode.(map[string]interface{})
-	trackerResp := BencodeTrackerResp{}
+	trackerResp := TrackerResp{}
 	trackerResp.Interval = int(bencodeMap["interval"].(int64))
 	if bencodeMap["peers"] == nil {
-		return nil, fmt.Errorf("tracker does not support IPv4, impossible to use this tracker")
+		return TrackerResp{}, fmt.Errorf("tracker does not support IPv4, impossible to use this tracker")
 	}
 	trackerResp.Peers = bencodeMap["peers"].(string)
-	return &trackerResp, nil
+	return trackerResp, nil
 }
 
 func parseBencodeValue(torrentData []byte, globalIndex int) (interface{}, int) {

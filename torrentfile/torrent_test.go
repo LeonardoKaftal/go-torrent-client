@@ -60,7 +60,7 @@ func TestBencodeToTorrentFile(t *testing.T) {
 	}
 }
 
-func TestParseTrackerUrl(t *testing.T) {
+func TestBuildTrackerUrl(t *testing.T) {
 	t.Log("Testing parse tracker url")
 	torrentBencode := bencode.Bencode{
 		Announce:     "http://bttracker.debian.org:6969/announce",
@@ -81,7 +81,7 @@ func TestParseTrackerUrl(t *testing.T) {
 	}
 	torrentFile.PeerId = [20]byte{}
 	expectedUrl := "http://bttracker.debian.org:6969/announce?compact=1&downloaded=0&info_hash=%02%97%90%5B%06%16A%F9%FFL%08%15%E1%A5W%C3%B0%83%07j&left=661651456&peer_id=%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00&port=6881&uploaded=0"
-	result, err := torrentFile.ParseTrackerUrl(torrentFile.Announce)
+	result, err := torrentFile.BuildTrackerUrl(torrentFile.Announce)
 	if err != nil {
 		t.Error(err)
 	}
