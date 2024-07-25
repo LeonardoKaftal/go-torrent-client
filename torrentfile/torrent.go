@@ -36,7 +36,7 @@ func OpenTorrent(path string) (*TorrentFile, error) {
 	return torrent, nil
 }
 
-func generatePeerId() ([20]byte, error) {
+func GeneratePeerId() ([20]byte, error) {
 	var buff [20]byte
 	_, err := rand.Read(buff[:])
 	if err != nil {
@@ -54,7 +54,7 @@ func bencodeToTorrentFile(torrentBencode *bencode.Bencode) (*TorrentFile, error)
 	if err != nil {
 		return nil, err
 	}
-	peerId, err := generatePeerId()
+	peerId, err := GeneratePeerId()
 	if err != nil {
 		return nil, fmt.Errorf("impossible to generate peer id: ERROR %s", err.Error())
 	}
