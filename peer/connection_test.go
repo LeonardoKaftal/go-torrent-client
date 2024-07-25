@@ -1,7 +1,7 @@
 package peer
 
 import (
-	"encoding/json"
+	"main/handshake"
 	"net"
 	"reflect"
 	"testing"
@@ -39,7 +39,7 @@ func TestHandshakePeer(t *testing.T) {
 	t.Log("Testing Handshake Peer")
 	clientConnection, serverConnection := connectToTestServer(t)
 	defer clientConnection.Close()
-	expectedHandskake := &Handshake{
+	expectedHandskake := &handshake.Handshake{
 		Pstr:     "BitTorrent protocol",
 		InfoHash: [20]byte{134, 212, 200, 0, 36, 164, 105, 190, 76, 80, 188, 90, 16, 44, 247, 23, 128, 49, 0, 116},
 		PeerId:   [20]byte{45, 83, 89, 48, 48, 49, 48, 45, 192, 125, 147, 203, 136, 32, 59, 180, 253, 168, 193, 19},
@@ -66,18 +66,14 @@ func TestHandshakePeerWithWrongInfoHash(t *testing.T) {
 	t.Log("Testing Handshake Peer With Wrong InfoHash")
 	clientConnection, serverConnection := connectToTestServer(t)
 	defer clientConnection.Close()
-	expectedHandskake := &Handshake{
+	expectedHandskake := &handshake.Handshake{
 		Pstr:     "BitTorrent protocol",
 		InfoHash: [20]byte{134, 212, 200, 0, 36, 164, 105, 190, 76, 80, 188, 90, 16, 44, 247, 23, 128, 49, 0, 116},
 		PeerId:   [20]byte{45, 83, 89, 48, 48, 49, 48, 45, 192, 125, 147, 203, 136, 32, 59, 180, 253, 168, 193, 19},
 	}
-	buff, err := json.Marshal(expectedHandskake)
-	if err != nil {
-		t.Error(err)
-	}
 
 	// the server send his handshake to the client
-	_, err = clientConnection.Write(buff)
+	_, err := clientConnection.Write(expectedHandskake.Serialize())
 	if err != nil {
 		t.Error(err)
 	}
