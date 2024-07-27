@@ -1,5 +1,10 @@
 package message
 
+import (
+	"encoding/binary"
+	"io"
+)
+
 type messageID uint8
 
 const (
@@ -19,6 +24,34 @@ type Message struct {
 	Payload []byte
 }
 
-/*func ReadMessage(r io.Reader) (*Message, error) {
+func ReadMessage(r io.Reader) (*Message, error) {
+	lengthBuff := make([]byte, 4)
+	_, err := io.ReadFull(r, lengthBuff)
+	if err != nil {
+		return nil, err
+	}
+	length := binary.BigEndian.Uint32(lengthBuff)
+	// keepalive message
+	if length == 0 {
+		return nil, nil
+	}
+	payloadBuff := make([]byte, length)
+	_, err = io.ReadFull(r, payloadBuff)
+	if err != nil {
+		return nil, err
+	}
+	messageId := messageID(payloadBuff[0])
+	return &Message{
+		ID:      messageId,
+		Payload: payloadBuff[1:],
+	}, nil
+}
 
-}*/
+func (m *Message) Serialize() []byte {
+	length := len(m.Payload) + 1 // + 1 for id
+	buff := make([]byte, length+4)
+	binary.BigEndian.PutUint32(buff, uint32(length))
+	buff[4] = byte(m.ID)
+	copy(buff[5:], m.Payload)
+	return buff
+}
