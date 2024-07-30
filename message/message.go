@@ -55,3 +55,24 @@ func (m *Message) Serialize() []byte {
 	copy(buff[5:], m.Payload)
 	return buff
 }
+
+func FormatHaveMessage(index int) *Message {
+	buff := make([]byte, 4)
+	binary.BigEndian.PutUint32(buff, uint32(index))
+
+	return &Message{
+		ID:      MsgHave,
+		Payload: buff,
+	}
+}
+
+func FormatRequest(index, begin, length int) *Message {
+	requestBuff := make([]byte, 12)
+	binary.BigEndian.PutUint32(requestBuff[0:4], uint32(index))
+	binary.BigEndian.PutUint32(requestBuff[4:8], uint32(begin))
+	binary.BigEndian.PutUint32(requestBuff[8:12], uint32(length))
+	return &Message{
+		ID:      MsgRequest,
+		Payload: requestBuff,
+	}
+}

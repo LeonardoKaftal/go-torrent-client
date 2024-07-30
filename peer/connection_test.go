@@ -1,7 +1,9 @@
 package peer
 
 import (
+	"encoding/binary"
 	"main/handshake"
+	"main/message"
 	"net"
 	"reflect"
 	"testing"
@@ -32,6 +34,40 @@ func connectToTestServer(t *testing.T) (ClientConnection, ServerConnection) {
 	}
 	<-waitChan
 	return clientConnection, serverConnection
+}
+
+func TestReadMessage(t *testing.T) {
+	clientConnection, serverConnection := connectToTestServer(t)
+	defer clientConnection.Close()
+	peerConnection := PeerConnection{
+		Conn: serverConnection,
+	}
+
+	unchockeTestMessage := &message.Message{ID: message.MsgUnchoke}
+	_, err := clientConnection.Write(unchockeTestMessage.Serialize())
+	if err != nil {
+		t.Error(err)
+	}
+	readedUnchockeMessage, err := peerConnection.ReadMessage()
+	if err != nil {
+		t.Error(err)
+	}
+	if readedUnchockeMessage.ID != message.MsgUnchoke {
+		t.Error("Unchoke message id does not match")
+	}
+
+	testRequestMessage := message.FormatRequest(3, 30, 5)
+	_, err = clientConnection.Write(testRequestMessage.Serialize())
+	if err != nil {
+		t.Error(err)
+	}
+	readedRequestMessage, err := peerConnection.ReadMessage()
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(testRequestMessage, readedRequestMessage) {
+		t.Error("Request message was not properly received")
+	}
 }
 
 // this test the ability of the client of reading handshake
@@ -83,5 +119,51 @@ func TestHandshakePeerWithWrongInfoHash(t *testing.T) {
 	_, err = HandshakePeer(serverConnection, peerId, expectedHandskake.InfoHash)
 	if err == nil {
 		t.Error("expected error for handshake with wrong InfoHash but got nil")
+	}
+}
+
+func TestSendHaveMessage(t *testing.T) {
+	t.Log("Testing Send have message")
+	clientConnection, serverConnection := connectToTestServer(t)
+	defer clientConnection.Close()
+	peerConnection := PeerConnection{
+		Conn: serverConnection,
+	}
+	err := peerConnection.SendHaveMessage(3)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// try to parse the message from the server prospective
+	readedMessage, err := message.ReadMessage(clientConnection)
+	if err != nil {
+		t.Error(err)
+	}
+	if readedMessage.ID != message.MsgHave {
+		t.Error("expected message to be have")
+	}
+	resultIndex := binary.BigEndian.Uint32(readedMessage.Payload)
+	if resultIndex != 3 {
+		t.Error("expected message with index 3 but got ", resultIndex)
+	}
+}
+
+func TestSendRequest(t *testing.T) {
+	clientConnection, serverConnection := connectToTestServer(t)
+	defer clientConnection.Close()
+	peerConnection := PeerConnection{
+		Conn: serverConnection,
+	}
+	err := peerConnection.SendRequest(3, 30, 10)
+	if err != nil {
+		t.Error(err)
+	}
+	receivedMessage, err := message.ReadMessage(clientConnection)
+	if err != nil {
+		t.Error(err)
+	}
+	expected := message.FormatRequest(3, 30, 10)
+	if !reflect.DeepEqual(receivedMessage, expected) {
+		t.Error("Request message was not properly received, epxected ", expected, "but got ", receivedMessage)
 	}
 }

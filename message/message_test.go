@@ -2,6 +2,7 @@ package message
 
 import (
 	"bytes"
+	"encoding/binary"
 	"reflect"
 	"testing"
 )
@@ -45,5 +46,36 @@ func TestSerializeMessage(t *testing.T) {
 
 	if !reflect.DeepEqual(result, expextedResult) {
 		t.Errorf("Expected: %v, got: %v", expextedResult, result)
+	}
+}
+
+func TestFormatHaveMessage(t *testing.T) {
+	t.Log("Testing formatHaveMessage")
+	expectedMessage := &Message{
+		ID:      MsgHave,
+		Payload: []byte{0x0, 0x0, 0x0, 0x2},
+	}
+	result := FormatHaveMessage(2)
+	if !reflect.DeepEqual(result, expectedMessage) {
+		t.Errorf("Expected have message: %v, got: %v", expectedMessage, result)
+	}
+}
+
+func TestFormatRequest(t *testing.T) {
+	t.Log("Testing Send Request")
+	index := 2
+	begin := 28
+	length := 10
+	expected := &Message{
+		ID:      MsgRequest,
+		Payload: make([]byte, 12),
+	}
+	binary.BigEndian.PutUint32(expected.Payload[0:4], uint32(index))
+	binary.BigEndian.PutUint32(expected.Payload[4:8], uint32(begin))
+	binary.BigEndian.PutUint32(expected.Payload[8:12], uint32(length))
+	result := FormatRequest(index, begin, length)
+	if !reflect.DeepEqual(expected, result) {
+		t.Errorf("Expected: %v, got: %v", expected, result)
+
 	}
 }
