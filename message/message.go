@@ -2,6 +2,7 @@ package message
 
 import (
 	"encoding/binary"
+	"fmt"
 	"io"
 )
 
@@ -64,6 +65,29 @@ func FormatHaveMessage(index int) *Message {
 		ID:      MsgHave,
 		Payload: buff,
 	}
+}
+
+func ParsePiece(index int, buff []byte, pieceMessage *Message) (int, error) {
+	if pieceMessage.ID != MsgPiece {
+		return 0, fmt.Errorf("message is not a piece")
+	}
+	if len(pieceMessage.Payload) < 8 {
+		return 0, fmt.Errorf("piece message payload is too small")
+	}
+	foundIndex := int(binary.BigEndian.Uint32(pieceMessage.Payload[0:4]))
+	if foundIndex != index {
+		return 0, fmt.Errorf("error while parsing piece message, indexes does not condide")
+	}
+	begin := int(binary.BigEndian.Uint32(pieceMessage.Payload[4:8]))
+	if begin >= len(buff) {
+		return 0, fmt.Errorf("error while parsing piece message, begin var is too great")
+	}
+	data := pieceMessage.Payload[8:]
+	if begin+len(data) > len(buff) {
+		return 0, fmt.Errorf("error while parsing piece message, data exced buffer capacity")
+	}
+	copy(buff[begin:], data)
+	return len(data), nil
 }
 
 func FormatRequest(index, begin, length int) *Message {

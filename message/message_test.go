@@ -23,6 +23,12 @@ func TestReadMessage(t *testing.T) {
 	if !reflect.DeepEqual(result, expectedMessage) {
 		t.Errorf("Expected: %v, got: %v", expectedMessage, result)
 	}
+	sentMessage = []byte{0, 0, 0, 0}
+	reader = bytes.NewReader(sentMessage)
+	result, err = ReadMessage(reader)
+	if err != nil {
+		t.Errorf("Error reading result: %s", err)
+	}
 }
 
 func TestReadForAnInvalidMessage(t *testing.T) {

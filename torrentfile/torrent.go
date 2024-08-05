@@ -4,8 +4,10 @@ import (
 	"crypto/rand"
 	"fmt"
 	"main/bencode"
+	"main/p2p"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 )
 
@@ -72,14 +74,38 @@ func bencodeToTorrentFile(torrentBencode *bencode.Bencode) (*TorrentFile, error)
 
 func (t *TorrentFile) Download(outputPath string) error {
 	trackerUrl, err := t.BuildTrackerUrl(t.Announce)
+	if err != nil {
+		return err
+	}
+
 	peers, err := GetPeersFromTracker(trackerUrl)
 	if err != nil {
 		return err
 	}
-	for _, peer := range peers {
-		fmt.Println(peer)
+
+	torrentDownload := p2p.Torrent{
+		InfoHash:    t.InfoHash,
+		PieceHashes: t.PieceHashes,
+		PieceLength: t.PieceLength,
+		Length:      t.Length,
+		Name:        t.Name,
+		PeerId:      t.PeerId,
+		Peers:       peers,
 	}
-	return nil
+
+	torrentBuff := torrentDownload.Download()
+	err = os.MkdirAll(outputPath, os.ModePerm)
+	if err != nil {
+		return err
+	}
+	downloadedTorrentFile, err := os.Create(filepath.Join(outputPath, t.Name))
+	if err != nil {
+		return err
+	}
+	defer downloadedTorrentFile.Close()
+
+	_, err = downloadedTorrentFile.Write(torrentBuff)
+	return err
 }
 
 func (t *TorrentFile) BuildTrackerUrl(trackerAnnounce string) (string, error) {
