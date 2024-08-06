@@ -11,10 +11,7 @@ import (
 	"time"
 )
 
-const (
-	maxBacklog   = 5
-	maxBlockSize = 16384
-)
+const maxBlockSize = 16384
 
 // Torrent != TorrentFile
 type Torrent struct {
@@ -127,8 +124,22 @@ func attemptToDownloadPiece(workPiece *PieceWork, peerConnection *peer.PeerConne
 	}
 	peerConnection.Conn.SetDeadline(time.Now().Add(30 * time.Second))
 	defer peerConnection.Conn.SetDeadline(time.Time{})
+
+	startTime := time.Now()
+	blocksReceived := 0
+
 	for state.blockDownloaded < workPiece.length {
-		if !peerConnection.Chocked && state.backlog < maxBacklog && state.blockRequested < workPiece.length {
+		// adaptive queueing
+		elapsed := time.Since(startTime).Seconds()
+		downloadRate := float64(blocksReceived*maxBlockSize) / 1024 / elapsed
+		var adaptiveBacklog int
+		if downloadRate < 20 {
+			adaptiveBacklog = int(downloadRate + 2)
+		} else {
+			adaptiveBacklog = int(downloadRate/5 + 18)
+		}
+
+		if !peerConnection.Chocked && state.backlog < adaptiveBacklog && state.blockRequested < workPiece.length {
 			blockSize := maxBlockSize
 			if workPiece.length-state.blockRequested < maxBlockSize {
 				blockSize = workPiece.length - state.blockRequested
@@ -144,6 +155,7 @@ func attemptToDownloadPiece(workPiece *PieceWork, peerConnection *peer.PeerConne
 		if err != nil {
 			return nil, err
 		}
+		blocksReceived++
 	}
 	log.Println("Successfully downloaded piece")
 	return state.pieceBuff, nil
