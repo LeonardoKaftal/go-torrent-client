@@ -12,21 +12,20 @@ type Bencode struct {
 	AnnounceList [][]string   `bencode:"announce-list,omitempty"`
 	Comment      string       `bencode:"comment,omitempty"`
 	CreatedBy    string       `bencode:"created by,omitempty"`
-	CreationDate int64        `bencode:"creation date,omitempty"`
+	CreationDate int          `bencode:"creation date,omitempty"`
 	Info         *BencodeInfo `bencode:"info"`
 }
 
 type BencodeInfo struct {
-	PieceLength int64   `bencode:"piece length"`
 	Pieces      string  `bencode:"pieces"`
-	Private     int     `bencode:"private,omitempty"`
+	PieceLength int     `bencode:"piece length"`
 	Name        string  `bencode:"name"`
-	Length      int64   `bencode:"length,omitempty"`
+	Length      int     `bencode:"length,omitempty"`
 	Files       []*File `bencode:"files,omitempty"`
 }
 
 type File struct {
-	Length int64    `bencode:"length"`
+	Length int      `bencode:"length"`
 	Path   []string `bencode:"path"`
 }
 
@@ -46,8 +45,9 @@ func (b *Bencode) SplitPieceHashes() ([][20]byte, error) {
 	if len(pieceBuff)%hashLen != 0 {
 		return nil, fmt.Errorf("received malformatted piece, invalid piece length: %d", len(pieceBuff))
 	}
-	hashes := make([][20]byte, hashLen)
-	for i := 0; i < hashLen; i++ {
+	hashNum := len(b.Info.Pieces) / hashLen
+	hashes := make([][20]byte, hashNum)
+	for i := 0; i < hashNum; i++ {
 		copy(hashes[i][:], pieceBuff[i*hashLen:(i+1)*hashLen])
 	}
 	return hashes, nil
@@ -75,24 +75,21 @@ func UnmarshallBencode(torrentData []byte) *Bencode {
 		bencode.CreatedBy = createdBy.(string)
 	}
 	if creationDate, ok := bencodeMap["creation date"]; ok {
-		bencode.CreationDate = creationDate.(int64)
+		bencode.CreationDate = creationDate.(int)
 	}
 	infoMap := bencodeMap["info"].(map[string]interface{})
 	info := BencodeInfo{}
-	info.PieceLength = infoMap["piece length"].(int64)
+	info.PieceLength = infoMap["piece length"].(int)
 	info.Pieces = infoMap["pieces"].(string)
-	if private, ok := infoMap["private"]; ok {
-		info.Private = int(private.(int64))
-	}
 	info.Name = infoMap["name"].(string)
 	if length, ok := infoMap["length"]; ok {
-		info.Length = length.(int64)
+		info.Length = length.(int)
 	}
 	if files, ok := infoMap["files"]; ok {
 		for _, file := range files.([]interface{}) {
 			fileMap := file.(map[string]interface{})
 			f := File{}
-			f.Length = fileMap["length"].(int64)
+			f.Length = fileMap["length"].(int)
 			for _, path := range fileMap["path"].([]interface{}) {
 				f.Path = append(f.Path, path.(string))
 			}
@@ -108,7 +105,7 @@ func UnmarshallTrackerBencodeResponse(responseData []byte) (TrackerResp, error) 
 	rawBencode, _ := parseBencodeValue(responseData, 0)
 	bencodeMap := rawBencode.(map[string]interface{})
 	trackerResp := TrackerResp{}
-	trackerResp.Interval = int(bencodeMap["interval"].(int64))
+	trackerResp.Interval = bencodeMap["interval"].(int)
 	if bencodeMap["peers"] == nil {
 		return TrackerResp{}, fmt.Errorf("tracker does not support IPv4, impossible to use this tracker")
 	}
@@ -176,7 +173,7 @@ func handleString(torrentData []byte, globalIndex int) (string, int) {
 	return string(torrentData[globalIndex+1 : globalIndex+1+stringLength]), globalIndex + 1 + stringLength
 }
 
-func handleInt(torrentData []byte, globalIndex int) (int64, int) {
+func handleInt(torrentData []byte, globalIndex int) (int, int) {
 	// skip the i
 	globalIndex++
 	newGlobalIndex := globalIndex
@@ -185,9 +182,9 @@ func handleInt(torrentData []byte, globalIndex int) (int64, int) {
 	}
 	value, err := strconv.ParseInt(string(torrentData[globalIndex:newGlobalIndex]), 10, 64)
 	if err != nil {
-		log.Fatal("Error reading bencode value, specifically trying to read int64 value")
+		log.Fatal("Error reading bencode value, specifically trying to read int value")
 	}
 	// skip e
 	globalIndex = newGlobalIndex + 1
-	return value, globalIndex
+	return int(value), globalIndex
 }

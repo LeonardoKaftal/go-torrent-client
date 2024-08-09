@@ -3,12 +3,16 @@ package torrentfile
 import (
 	"crypto/rand"
 	"fmt"
+	"log"
 	"main/bencode"
 	"main/p2p"
+	"main/peer"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
+	"sync"
 )
 
 // TorrentFile struct is != from the torrent struct
@@ -65,23 +69,69 @@ func bencodeToTorrentFile(torrentBencode *bencode.Bencode) (*TorrentFile, error)
 		AnnounceList: torrentBencode.AnnounceList,
 		InfoHash:     infoHash,
 		PieceHashes:  pieceHashes,
-		PieceLength:  int(torrentBencode.Info.PieceLength),
-		Length:       int(torrentBencode.Info.Length),
+		PieceLength:  torrentBencode.Info.PieceLength,
+		Length:       torrentBencode.Info.Length,
 		Name:         torrentBencode.Info.Name,
 		PeerId:       peerId,
 	}, nil
 }
 
-func (t *TorrentFile) Download(outputPath string) error {
-	trackerUrl, err := t.BuildTrackerUrl(t.Announce)
-	if err != nil {
-		return err
-	}
+func (t *TorrentFile) requestPeers() []peer.Peer {
+	wg := new(sync.WaitGroup)
+	mu := sync.Mutex{}
+	var peers []peer.Peer
+	if len(t.AnnounceList) > 0 {
+		for _, trackerUrlList := range t.AnnounceList {
+			wg.Add(1)
+			go func() {
+				trackerUrl := trackerUrlList[0]
+				if strings.HasPrefix(trackerUrl, "http") {
+					newTrackerUrl, err := t.BuildTrackerUrl(trackerUrl)
+					if err != nil {
+						log.Println("Error building url tracker ", err)
+						return
+					}
+					trackerUrl = newTrackerUrl
+				}
+				obtainedPeers, err := GetPeersFromTracker(trackerUrl, t.InfoHash, t.PeerId)
+				if err == nil {
+					peers = obtainedPeers
+					log.Println("OBTAINED SOME PEERS FROM TRACKER: ", trackerUrl, " NUM: ", len(obtainedPeers))
+					mu.Lock()
+					peers = append(peers, obtainedPeers...)
+					mu.Unlock()
+				} else {
+					log.Printf("Error getting peers from tracker: %s, error: %s", trackerUrl, err)
 
-	peers, err := GetPeersFromTracker(trackerUrl)
-	if err != nil {
-		return err
+				}
+				wg.Done()
+			}()
+		}
+		wg.Wait()
+
+		// directly call t.announce
+	} else {
+		if strings.HasPrefix(t.Announce, "http") {
+			newTrackerUrl, err := t.BuildTrackerUrl(t.Announce)
+			if err != nil {
+				log.Fatal("Error building url tracker ", err, " unfortunately this is the only tracker available for this torrent")
+			}
+			t.Announce = newTrackerUrl
+		}
+		obtainedPeers, err := GetPeersFromTracker(t.Announce, t.InfoHash, t.PeerId)
+		if err != nil {
+			log.Fatal("Error getting peers from tracker: ", err, " unfortunately this is the only tracker available for this torrent")
+		}
+		peers = obtainedPeers
 	}
+	if len(peers) == 0 {
+		log.Fatal("No peers found, impossible to download the torrent")
+	}
+	return peers
+}
+
+func (t *TorrentFile) Download(outputPath string) error {
+	peers := t.requestPeers()
 
 	torrentDownload := p2p.Torrent{
 		InfoHash:    t.InfoHash,
@@ -94,7 +144,7 @@ func (t *TorrentFile) Download(outputPath string) error {
 	}
 
 	torrentBuff := torrentDownload.Download()
-	err = os.MkdirAll(outputPath, os.ModePerm)
+	err := os.MkdirAll(outputPath, os.ModePerm)
 	if err != nil {
 		return err
 	}
@@ -114,7 +164,6 @@ func (t *TorrentFile) BuildTrackerUrl(trackerAnnounce string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	// generating a peer id
 	rawQuery := url.Values{
 		"info_hash":  []string{string(t.InfoHash[:])},
 		"downloaded": []string{"0"},

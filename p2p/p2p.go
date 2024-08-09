@@ -61,12 +61,14 @@ func (t *Torrent) calculateBoundForPiece(index int) (int, int) {
 func (t *Torrent) Download() []byte {
 	workQueue := make(chan *PieceWork, len(t.PieceHashes))
 	resultQueue := make(chan *PieceResult)
+
 	for i, hash := range t.PieceHashes {
 		workQueue <- &PieceWork{i, t.calculatePieceLength(i), hash}
 	}
 	for _, downloadPeer := range t.Peers {
 		go t.startDownloadWorker(downloadPeer, workQueue, resultQueue)
 	}
+
 	donePieces := 0
 	torrentBuff := make([]byte, t.Length)
 	for donePieces < len(t.PieceHashes) {
@@ -75,7 +77,7 @@ func (t *Torrent) Download() []byte {
 		begin, end := t.calculateBoundForPiece(resultPiece.index)
 		copy(torrentBuff[begin:end], resultPiece.buff)
 		percentage := float64(donePieces) / float64(len(t.PieceHashes)) * 100
-		log.Printf("Download at %0.2f%%, downloading a piece from %d peers with index %d", percentage, runtime.NumGoroutine(), resultPiece.index)
+		log.Printf("Download at %0.2f%%, downloading a piece from %d peers with index %d", percentage, runtime.NumGoroutine()-1, resultPiece.index)
 	}
 	close(workQueue)
 	return torrentBuff
@@ -138,7 +140,6 @@ func attemptToDownloadPiece(workPiece *PieceWork, peerConnection *peer.PeerConne
 		} else {
 			adaptiveBacklog = int(downloadRate/5 + 18)
 		}
-
 		if !peerConnection.Chocked && state.backlog < adaptiveBacklog && state.blockRequested < workPiece.length {
 			blockSize := maxBlockSize
 			if workPiece.length-state.blockRequested < maxBlockSize {

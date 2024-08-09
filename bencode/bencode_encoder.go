@@ -15,10 +15,6 @@ func EncodeTorrentInfoToBencode(bencode *BencodeInfo) string {
 	sb.WriteString(fmt.Sprintf("4:name%d:%s", len(bencode.Name), bencode.Name))
 	sb.WriteString(fmt.Sprintf("12:piece lengthi%de", bencode.PieceLength))
 	sb.WriteString(fmt.Sprintf("6:pieces%d:%s", len(bencode.Pieces), bencode.Pieces))
-
-	if bencode.Private != 0 {
-		sb.WriteString(fmt.Sprintf("7:privatei%de", bencode.Private))
-	}
 	if len(bencode.Files) > 0 {
 		sb.WriteString("5:filesl")
 		for _, file := range bencode.Files {

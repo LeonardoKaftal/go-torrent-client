@@ -24,7 +24,7 @@ type PeerConnection struct {
 func ConnectToPeer(peer Peer, peerId, infoHash [20]byte) (*PeerConnection, error) {
 	peerConn, err := net.DialTimeout("tcp", peer.String(), 5*time.Second)
 	if err != nil {
-		log.Printf("Error connecting to PeerToConnect: %s because of ERROR: %s, skipping it\n", peer.String(), err)
+		log.Printf("Error connecting to peer: %s because of ERROR: %s, skipping it\n", peer.String(), err)
 		return nil, err
 	}
 	log.Println("Connected to peer ", peer.String())
