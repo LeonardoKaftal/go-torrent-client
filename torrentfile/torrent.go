@@ -145,10 +145,11 @@ func (t *TorrentFile) Download(outputPath string) error {
 		Peers:       peers,
 	}
 
-	err := os.MkdirAll(outputPath, os.ModePerm)
+	err := os.MkdirAll(outputPath, 0777)
 	if err != nil {
 		return err
 	}
+
 	downloadedTorrentFile, err := os.Create(filepath.Join(outputPath, t.Name))
 	if err != nil {
 		return err

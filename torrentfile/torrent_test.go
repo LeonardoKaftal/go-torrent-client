@@ -13,9 +13,9 @@ func TestBencodeToTorrentFile(t *testing.T) {
 		AnnounceList: nil,
 		Comment:      "Debian CD from cdimage.debian.org",
 		CreatedBy:    "mktorrent 1.1",
-		CreationDate: int64(1719662085),
+		CreationDate: 1719662085,
 		Info: &bencode.BencodeInfo{
-			PieceLength: int64(262144),
+			PieceLength: 262144,
 			Pieces:      "1234567890abcdefghijabcdefghij12345678901234567890abcdefghijabcdefghij12345678901234567890abcdefghijabcdefghij12345678901234567890abcdefghijabcdefghij12345678901234567890abcdefghijabcdefghij12345678901234567890abcdefghijabcdefghij12345678901234567890abcdefghijabcdefghij12345678901234567890abcdefghijabcdefghij12345678901234567890abcdefghijabcdefghij12345678901234567890abcdefghijabcdefghij1234567890",
 			Name:        "debian-12.6.0-amd64-netinst.iso",
 			Length:      661651456,
@@ -30,7 +30,7 @@ func TestBencodeToTorrentFile(t *testing.T) {
 	expectedTorrent := &TorrentFile{
 		Announce:     "http://bttracker.debian.org:6969/announce",
 		AnnounceList: nil,
-		InfoHash:     [20]byte{2, 151, 144, 91, 6, 22, 65, 249, 255, 76, 8, 21, 225, 165, 87, 195, 176, 131, 7, 106},
+		InfoHash:     [20]byte{243, 10, 96, 241, 140, 73, 5, 218, 242, 41, 246, 253, 150, 130, 169, 3, 126, 3, 114, 1},
 		PieceHashes: [][20]byte{
 			{49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106}, {97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 49, 50, 51, 52, 53, 54, 55, 56, 57, 48},
 			{49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106}, {97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 49, 50, 51, 52, 53, 54, 55, 56, 57, 48},
@@ -43,8 +43,8 @@ func TestBencodeToTorrentFile(t *testing.T) {
 			{49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106}, {97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 49, 50, 51, 52, 53, 54, 55, 56, 57, 48},
 			{49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106}, {97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 49, 50, 51, 52, 53, 54, 55, 56, 57, 48},
 		},
-		PieceLength: int(torrentBencode.Info.PieceLength),
-		Length:      int(torrentBencode.Info.Length),
+		PieceLength: torrentBencode.Info.PieceLength,
+		Length:      torrentBencode.Info.Length,
 		Name:        torrentBencode.Info.Name,
 	}
 
@@ -67,9 +67,9 @@ func TestBuildTrackerUrl(t *testing.T) {
 		AnnounceList: nil,
 		Comment:      "Debian CD from cdimage.debian.org",
 		CreatedBy:    "mktorrent 1.1",
-		CreationDate: int64(1719662085),
+		CreationDate: 1719662085,
 		Info: &bencode.BencodeInfo{
-			PieceLength: int64(262144),
+			PieceLength: 262144,
 			Pieces:      "1234567890abcdefghijabcdefghij12345678901234567890abcdefghijabcdefghij12345678901234567890abcdefghijabcdefghij12345678901234567890abcdefghijabcdefghij12345678901234567890abcdefghijabcdefghij12345678901234567890abcdefghijabcdefghij12345678901234567890abcdefghijabcdefghij12345678901234567890abcdefghijabcdefghij12345678901234567890abcdefghijabcdefghij12345678901234567890abcdefghijabcdefghij1234567890",
 			Name:        "debian-12.6.0-amd64-netinst.iso",
 			Length:      661651456,
@@ -80,7 +80,7 @@ func TestBuildTrackerUrl(t *testing.T) {
 		t.Log(err)
 	}
 	torrentFile.PeerId = [20]byte{}
-	expectedUrl := "http://bttracker.debian.org:6969/announce?compact=1&downloaded=0&info_hash=%02%97%90%5B%06%16A%F9%FFL%08%15%E1%A5W%C3%B0%83%07j&left=661651456&peer_id=%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00&port=6881&uploaded=0"
+	expectedUrl := "http://bttracker.debian.org:6969/announce?compact=1&downloaded=0&info_hash=%F3%0A%60%F1%8CI%05%DA%F2%29%F6%FD%96%82%A9%03~%03r%01&left=661651456&peer_id=%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00&port=6881&uploaded=0"
 	result, err := torrentFile.BuildTrackerUrl(torrentFile.Announce)
 	if err != nil {
 		t.Error(err)

@@ -30,7 +30,7 @@ func TestHandleList(t *testing.T) {
 	t.Log("Testing handle List")
 	s := "li75234e5:helloe"
 	result, newGlobalIndex := handleList([]byte(s), 0)
-	if result[0].(int64) != 75234 || result[1] != "hello" || newGlobalIndex != 16 {
+	if result[0].(int) != 75234 || result[1] != "hello" || newGlobalIndex != 16 {
 		t.Error("Expected 75234 GOT ", result[0], " as first member, as second member expected hello GOT ", result[1], " as global index expected 16 GOT", newGlobalIndex)
 	}
 }
@@ -40,14 +40,10 @@ func TestHandleDictionary(t *testing.T) {
 	s := "d4:listli75234e5:helloe1:a1:be"
 	value, globalIndex := handleDictionary([]byte(s), 0)
 	subList, _ := handleList([]byte("li75234e5:helloe"), 0)
-	if !compareSlices(value["list"].([]interface{}), subList) {
+	if !reflect.DeepEqual(value["list"].([]interface{}), subList) {
 		t.Error("Expected:", subList, "got:", value["list"])
 	}
 	if value["a"] != "b" || globalIndex != len(s) {
 		t.Error("Expected value with key a to be b and globalIndex to be", len(s), " instead got ", value["a"], globalIndex)
 	}
-}
-
-func compareSlices(a, b []interface{}) bool {
-	return reflect.DeepEqual(a, b)
 }

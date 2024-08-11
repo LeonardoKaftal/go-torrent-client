@@ -15,8 +15,6 @@ import (
 )
 
 func GetPeersFromTracker(trackerUrl string, infoHash, peerId [20]byte) ([]peer.Peer, error) {
-	//infoHash = [20]uint8{37, 226, 241, 170, 132, 216, 228, 175, 186, 129, 5, 101, 107, 219, 77, 223, 61, 185, 95, 164}
-
 	log.Println("trying to get peers from tracker ", trackerUrl)
 	if strings.HasPrefix(trackerUrl, "http") {
 		return getPeersFromHttpTracker(trackerUrl)
