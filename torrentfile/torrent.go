@@ -77,14 +77,16 @@ func bencodeToTorrentFile(torrentBencode *bencode.Bencode) (*TorrentFile, error)
 }
 
 func (t *TorrentFile) requestPeers() []peer.Peer {
-	wg := new(sync.WaitGroup)
-	mu := sync.Mutex{}
+	var wg sync.WaitGroup
+	var mu sync.Mutex
 	var peers []peer.Peer
+
 	if len(t.AnnounceList) > 0 {
 		for _, trackerUrlList := range t.AnnounceList {
 			wg.Add(1)
-			go func() {
-				trackerUrl := trackerUrlList[0]
+			go func(trackerUrl string) {
+				defer wg.Done()
+
 				if strings.HasPrefix(trackerUrl, "http") {
 					newTrackerUrl, err := t.BuildTrackerUrl(trackerUrl)
 					if err != nil {
@@ -93,24 +95,21 @@ func (t *TorrentFile) requestPeers() []peer.Peer {
 					}
 					trackerUrl = newTrackerUrl
 				}
+
 				obtainedPeers, err := GetPeersFromTracker(trackerUrl, t.InfoHash, t.PeerId)
 				if err == nil {
-					peers = obtainedPeers
-					log.Println("OBTAINED SOME PEERS FROM TRACKER: ", trackerUrl, " NUM: ", len(obtainedPeers))
 					mu.Lock()
 					peers = append(peers, obtainedPeers...)
 					mu.Unlock()
+					log.Println("OBTAINED SOME PEERS FROM TRACKER: ", trackerUrl, " NUM: ", len(obtainedPeers))
 				} else {
 					log.Printf("Error getting peers from tracker: %s, error: %s", trackerUrl, err)
-
 				}
-				wg.Done()
-			}()
+			}(trackerUrlList[0])
 		}
 		wg.Wait()
-
-		// directly call t.announce
 	} else {
+		// Handle the case where only the single tracker URL `Announce` is provided
 		if strings.HasPrefix(t.Announce, "http") {
 			newTrackerUrl, err := t.BuildTrackerUrl(t.Announce)
 			if err != nil {
@@ -118,15 +117,18 @@ func (t *TorrentFile) requestPeers() []peer.Peer {
 			}
 			t.Announce = newTrackerUrl
 		}
+
 		obtainedPeers, err := GetPeersFromTracker(t.Announce, t.InfoHash, t.PeerId)
 		if err != nil {
 			log.Fatal("Error getting peers from tracker: ", err, " unfortunately this is the only tracker available for this torrent")
 		}
-		peers = obtainedPeers
+		peers = append(peers, obtainedPeers...)
 	}
+
 	if len(peers) == 0 {
 		log.Fatal("No peers found, impossible to download the torrent")
 	}
+
 	return peers
 }
 
@@ -143,7 +145,6 @@ func (t *TorrentFile) Download(outputPath string) error {
 		Peers:       peers,
 	}
 
-	torrentBuff := torrentDownload.Download()
 	err := os.MkdirAll(outputPath, os.ModePerm)
 	if err != nil {
 		return err
@@ -152,9 +153,8 @@ func (t *TorrentFile) Download(outputPath string) error {
 	if err != nil {
 		return err
 	}
+	err = torrentDownload.Download(filepath.Join(outputPath, t.Name))
 	defer downloadedTorrentFile.Close()
-
-	_, err = downloadedTorrentFile.Write(torrentBuff)
 	return err
 }
 

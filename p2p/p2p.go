@@ -7,6 +7,7 @@ import (
 	"log"
 	"main/message"
 	"main/peer"
+	"os"
 	"runtime"
 	"time"
 )
@@ -50,15 +51,26 @@ func (t *Torrent) calculatePieceLength(index int) int {
 }
 
 func (t *Torrent) calculateBoundForPiece(index int) (int, int) {
+	if t.Length == 0 {
+		t.Length = len(t.PieceHashes) * t.PieceLength
+	}
+
 	begin := index * t.PieceLength
 	end := begin + t.PieceLength
 	if end > t.Length {
-		end = len(t.PieceHashes)
+		end = t.Length
 	}
 	return begin, end
 }
 
-func (t *Torrent) Download() []byte {
+func (t *Torrent) Download(outputPath string) error {
+	// Apri un file su disco per scrivere il contenuto del torrent
+	file, err := os.Create(outputPath)
+	if err != nil {
+		return fmt.Errorf("failed to create output file: %s", err)
+	}
+	defer file.Close()
+
 	workQueue := make(chan *PieceWork, len(t.PieceHashes))
 	resultQueue := make(chan *PieceResult)
 
@@ -70,17 +82,27 @@ func (t *Torrent) Download() []byte {
 	}
 
 	donePieces := 0
-	torrentBuff := make([]byte, t.Length)
+	log.Println(t.Length)
+
 	for donePieces < len(t.PieceHashes) {
 		resultPiece := <-resultQueue
 		donePieces++
-		begin, end := t.calculateBoundForPiece(resultPiece.index)
-		copy(torrentBuff[begin:end], resultPiece.buff)
+
+		begin, _ := t.calculateBoundForPiece(resultPiece.index)
+		_, err := file.Seek(int64(begin), 0)
+		if err != nil {
+			return fmt.Errorf("failed to seek file: %s", err)
+		}
+		_, err = file.Write(resultPiece.buff)
+		if err != nil {
+			return fmt.Errorf("failed to write piece to file: %s", err)
+		}
+
 		percentage := float64(donePieces) / float64(len(t.PieceHashes)) * 100
 		log.Printf("Download at %0.2f%%, downloading a piece from %d peers with index %d", percentage, runtime.NumGoroutine()-1, resultPiece.index)
 	}
 	close(workQueue)
-	return torrentBuff
+	return nil
 }
 
 func (t *Torrent) startDownloadWorker(downloadPeer peer.Peer, workQueue chan *PieceWork, resultQueue chan *PieceResult) {

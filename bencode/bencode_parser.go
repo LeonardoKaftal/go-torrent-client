@@ -9,10 +9,10 @@ import (
 
 type Bencode struct {
 	Announce     string       `bencode:"announce"`
-	AnnounceList [][]string   `bencode:"announce-list,omitempty"`
-	Comment      string       `bencode:"comment,omitempty"`
-	CreatedBy    string       `bencode:"created by,omitempty"`
-	CreationDate int          `bencode:"creation date,omitempty"`
+	AnnounceList [][]string   `bencode:"announce-list,omitempty"` // optional
+	Comment      string       `bencode:"comment,omitempty"`       // optional
+	CreatedBy    string       `bencode:"created by,omitempty"`    // optional
+	CreationDate int          `bencode:"creation date,omitempty"` // optional
 	Info         *BencodeInfo `bencode:"info"`
 }
 
@@ -20,13 +20,17 @@ type BencodeInfo struct {
 	Pieces      string  `bencode:"pieces"`
 	PieceLength int     `bencode:"piece length"`
 	Name        string  `bencode:"name"`
-	Length      int     `bencode:"length,omitempty"`
-	Files       []*File `bencode:"files,omitempty"`
+	Length      int     `bencode:"length,omitempty"`  // optional
+	Files       []*File `bencode:"files,omitempty"`   // optional
+	Private     int     `bencode:"private,omitempty"` // optional
+	Source      string  `bencode:"source,omitempty"`  // optional
 }
 
 type File struct {
-	Length int      `bencode:"length"`
-	Path   []string `bencode:"path"`
+	Length   int      `bencode:"length"`
+	Path     []string `bencode:"path"`
+	SHA1Hash string   `bencode:"sha1"` // optional, to validate this file
+	MD5Hash  string   `bencode:"md5"`  // optional, to validate this file
 }
 
 type TrackerResp struct {
@@ -81,6 +85,17 @@ func UnmarshallBencode(torrentData []byte) *Bencode {
 	info := BencodeInfo{}
 	info.PieceLength = infoMap["piece length"].(int)
 	info.Pieces = infoMap["pieces"].(string)
+	if private, ok := infoMap["private"]; ok {
+		info.Private = private.(int)
+	} else {
+		// Private can't be 2 following the protocol, (it can be etheir 0 or 1, i will set it to 2 to specify that is not specified, i do this because
+		// i can't set it to 0 if not specified otherwise trackers would give me an error it need to be null, (see bencode_encoder handling of private field)
+		// (the infohash is calculated by the SHA1 SUM of the bencoded string of the info struct, so it matter if i write it in the string privatee or not, it would change the hash)
+		info.Private = 2
+	}
+	if source, ok := infoMap["source"]; ok {
+		info.Source = source.(string)
+	}
 	info.Name = infoMap["name"].(string)
 	if length, ok := infoMap["length"]; ok {
 		info.Length = length.(int)
@@ -93,11 +108,17 @@ func UnmarshallBencode(torrentData []byte) *Bencode {
 			for _, path := range fileMap["path"].([]interface{}) {
 				f.Path = append(f.Path, path.(string))
 			}
+			if sha1Hash, ok := fileMap["sha1"]; ok {
+				f.SHA1Hash = sha1Hash.(string)
+			}
+			if md5Hash, ok := fileMap["md5"]; ok {
+				f.MD5Hash = md5Hash.(string)
+			}
 			info.Files = append(info.Files, &f)
 		}
 	}
-	bencode.Info = &info
 
+	bencode.Info = &info
 	return &bencode
 }
 
