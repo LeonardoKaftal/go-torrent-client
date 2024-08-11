@@ -13,7 +13,7 @@ Compliant with the following parts of the BitTorrent protocol:
 - `go build -o torrent-client`
 
 If you are on a UNIX-based system:
-- `chmod +x bar`
+- `chmod +x torrent-client`
 - `./torrent-client torrent-path output-path`
 
 If you are on Windows:
@@ -25,5 +25,4 @@ If you are on Windows:
 - [ ] Improve the performance (for example, by implementing a priority for each peer based on its speed)
 
 # Video
-
 https://drive.google.com/file/d/1CYuAo63BMrtDNcvNxJpSbuE5hS-zbTUC/view
